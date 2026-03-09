@@ -3,11 +3,13 @@ let displayResult = document.getElementById('resultDisplay');
 let champ = document.getElementById('champ');
 const btns = document.querySelectorAll('.calc-btn');
 let clearBtn = document.getElementById('clear-btn');
+const backspaceBtn = document.getElementById('backspace-btn');
 const historyBtn = document.getElementById('history-btn');
 const historyList = document.getElementById('history-list');
 const historyContainer = document.getElementById('history-container');
 const historyCloseBtn = document.getElementById('history-close-btn');
 const clearHistoryBtn = document.getElementById('clear-history-btn');
+const interactiveButtons = document.querySelectorAll('button');
 
 
 const themeToggle = document.getElementById('theme-toggle');
@@ -43,17 +45,71 @@ const allowed = [
 
 ]
 
+const applyButtonFeedback = btn => {
+  btn.classList.add(...hoverClasses);
+};
+
+const removeButtonFeedback = btn => {
+  btn.classList.remove(...hoverClasses);
+};
+
 champ.focus();
+
+const removeLastCharacter = () => {
+  const start = champ.selectionStart ?? champ.value.length;
+  const end = champ.selectionEnd ?? champ.value.length;
+
+  if (start !== end) {
+    champ.value = champ.value.slice(0, start) + champ.value.slice(end);
+    champ.setSelectionRange(start, start);
+  } else if (start > 0) {
+    champ.value = champ.value.slice(0, start - 1) + champ.value.slice(end);
+    champ.setSelectionRange(start - 1, start - 1);
+  }
+
+  if (champ.value.trim() === '') {
+    displayResult.value = '0';
+  }
+  champ.focus();
+};
 
 
 class CalcHistory {
   static STORAGE_KEY = 'calcHistory';
 
+  static getOperationKey(expression, result) {
+    return `${expression}::${result}`;
+  }
+
+  static normalizeHistory(history) {
+    const uniqueHistory = [];
+    const seen = new Set();
+
+    for (let i = history.length - 1; i >= 0; i--) {
+      const op = history[i];
+      const key = this.getOperationKey(op.expression, op.result);
+
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      uniqueHistory.unshift(op);
+    }
+
+    return uniqueHistory;
+  }
+
   static getHistory() {
     const raw = localStorage.getItem(this.STORAGE_KEY);
     if (!raw) return [];
     try {
-      return JSON.parse(raw);
+      const parsedHistory = JSON.parse(raw);
+      const normalizedHistory = this.normalizeHistory(parsedHistory);
+
+      if (normalizedHistory.length !== parsedHistory.length) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(normalizedHistory));
+      }
+
+      return normalizedHistory;
     } catch (err) {
       console.error('Erreur de parsing du history:', err);
       // en cas de données corrompues, on remet à zéro
@@ -63,7 +119,10 @@ class CalcHistory {
   }
 
   static addOperation(expression, result) {
-    const history = this.getHistory();
+    const operationKey = this.getOperationKey(expression, result);
+    const history = this.getHistory().filter(op =>
+      this.getOperationKey(op.expression, op.result) !== operationKey
+    );
     const op = {
       expression,
       result,
@@ -99,6 +158,24 @@ btns.forEach(btn => {
   });
 });
 
+interactiveButtons.forEach(btn => {
+  btn.addEventListener('pointerdown', () => {
+    applyButtonFeedback(btn);
+  });
+
+  btn.addEventListener('pointerup', () => {
+    removeButtonFeedback(btn);
+  });
+
+  btn.addEventListener('pointerleave', () => {
+    removeButtonFeedback(btn);
+  });
+
+  btn.addEventListener('pointercancel', () => {
+    removeButtonFeedback(btn);
+  });
+});
+
 champ.addEventListener('input', e => {
   const v = e.target.value;
   const filtered = [...v].filter(ch => allowed.includes(ch)).join('');
@@ -115,9 +192,9 @@ champ.addEventListener('keydown', e => {
   }
   if (allButton.hasOwnProperty(e.key)) {
     const btn = allButton[e.key];
-    btn.classList.add(...hoverClasses);
+    applyButtonFeedback(btn);
     setTimeout(() => {
-      btn.classList.remove(...hoverClasses);
+      removeButtonFeedback(btn);
     }, 200);
   }
   if (ctrlKeys.includes(e.key)) return;
@@ -129,6 +206,11 @@ champ.addEventListener('keydown', e => {
 clearBtn.addEventListener('click', () => {
   champ.value = '';
   displayResult.value = '0';
+  champ.focus();
+});
+
+backspaceBtn.addEventListener('click', () => {
+  removeLastCharacter();
 });
 
 function addOperationToDisplay(op) {
@@ -168,10 +250,14 @@ function addOperationToDisplay(op) {
 }
 
 
-historyList.innerHTML = '';
-History.getHistory().reverse().forEach(op => {
-  addOperationToDisplay(op);
-});
+const renderHistory = () => {
+  historyList.innerHTML = '';
+  History.getHistory().reverse().forEach(op => {
+    addOperationToDisplay(op);
+  });
+};
+
+renderHistory();
 
 button.addEventListener('click', () => {
   let champContain = champ.value.trim();
@@ -193,11 +279,7 @@ button.addEventListener('click', () => {
     }
     displayResult.value = "=" + result;
     History.addOperation(champContain, result);
-    addOperationToDisplay({
-      expression: champContain,
-      result: result,
-      timestamp: new Date().toISOString()
-    });
+    renderHistory();
   } catch (error) {
     console.log("Il y a une erreur dans l'expression");
     displayResult.value = 'Erreur';
