@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Start-of-task behavior
+
+At the beginning of every task:
+- check the Git status
+- identify whether the repository is clean or dirty
+- warn the user if there are existing staged, unstaged, or untracked files
+- do not assume ownership of existing modifications
+
+
 ## Project Overview
 
 This repository contains a modern web calculator built with:
@@ -161,3 +170,26 @@ A task is complete when:
 - the UI remains responsive and visually coherent
 - Tailwind CSS has been rebuilt if the UI was modified
 - generated CSS output is up to date when applicable
+
+
+## Git safety rules
+
+Before making any Git action, always inspect the working tree first.
+
+- Run a status check before starting work.
+- If there are existing uncommitted changes, do not assume they belong to the current task.
+- Never include pre-existing uncommitted changes in a commit unless explicitly instructed.
+- Never create a new branch without explicit user approval.
+- Never commit without explicit user approval.
+- Never push without explicit user approval.
+- Never open or prepare a pull request without explicit user approval.
+
+If the repository already contains local modifications:
+1. Report them clearly.
+2. Separate your own changes from pre-existing ones.
+3. Ask whether your changes should be committed alone or together with earlier changes.
+
+When finishing a task:
+- summarize modified files
+- explain whether the repo was already dirty before your work
+- propose a branch name, commit message, and PR description, but do not execute Git publication steps without approval

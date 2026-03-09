@@ -27,7 +27,7 @@ calculator-js/
 ├── index.html
 ├── sources/
 │   ├── css/
-│   │   └── styles.css
+│   │   └── styles.css / outuput.css / tailwind.css
 │   └── js/
 │       └── script.js
 ├── LICENSE
